@@ -24,15 +24,15 @@ public class SimActivatorController {
         payload.put("iccid", requestData.getIccid());
 
         ResponseEntity<Map> response = restTemplate.postForEntity(actuatorURL, payload, Map.class);
-        boolean success = (boolean)  response.getBody().get("success");
-
-        // After trying to activate Sim. Save the record of the attempt.
-
-        SimActivationRecord record = new SimActivationRecord(requestData.getIccid(), requestData.getEmail(), success);
-        repository.save(record);
-
-        if (success) {
-            return ResponseEntity.ok("SIM activated successfully.");
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            boolean success = (boolean)  response.getBody().get("success");
+            SimActivationRecord record = new SimActivationRecord(requestData.getIccid(), requestData.getEmail(), success);
+            repository.save(record);
+            if (success) {
+                return ResponseEntity.ok("SIM activated successfully.");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("SIM activation failed.");
+            }
         } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("SIM activation failed.");
         }
