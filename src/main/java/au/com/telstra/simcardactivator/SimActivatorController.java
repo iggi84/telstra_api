@@ -1,10 +1,9 @@
 package au.com.telstra.simcardactivator;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -12,6 +11,9 @@ import java.util.Map;
 
 @RestController
 public class SimActivatorController {
+
+    @Autowired
+    private SimActivationRecordRepository repository;
 
     @PostMapping("/activateSim")
     public ResponseEntity<String> activateSim(@RequestBody SimActivationPayload requestData) {
@@ -24,6 +26,10 @@ public class SimActivatorController {
         ResponseEntity<Map> response = restTemplate.postForEntity(actuatorURL, payload, Map.class);
         boolean success = (boolean)  response.getBody().get("success");
 
+        // After trying to activate Sim. Save the record of the attempt.
+
+        SimActivationRecord record = new SimActivationRecord(requestData.getIccid(), requestData.getEmail(), success);
+        repository.save(record);
 
         if (success) {
             return ResponseEntity.ok("SIM activated successfully.");
@@ -32,4 +38,10 @@ public class SimActivatorController {
         }
     }
 
+    @GetMapping("/querySim")
+    public ResponseEntity<SimActivationRecord> querySim(@RequestParam String iccid) {
+        return repository.findByIccid(iccid)
+                .map(record -> ResponseEntity.ok().body(record))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 }
